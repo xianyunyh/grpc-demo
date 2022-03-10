@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option go_package = "../models";
+
+package models;
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+message UserRequest  {
+    int32 id = 1;
+};
+enum SEX {
+        UNKNOW =0;
+        WOMAN = 1;
+        MAN = 2;
+    }
+message UserResponse  {
+    int32 id = 1;
+    string name = 2;
+    int32 age = 3;
+    SEX sex = 4;
+    repeated string friend = 5; //重复 等价[]string
+    map<string,string> meta = 6;//定义map
+    google.protobuf.Any other = 7;
+    google.protobuf.Timestamp birthday = 8;
+}
+service User {
+    rpc GetName(UserRequest) returns (UserResponse) {
+        option (google.api.http) = {
+			get: "/helloworld"
+		};
+    };
+};
