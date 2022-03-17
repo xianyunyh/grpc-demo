@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package blog;
+
+option go_package = "../models";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+message PostItem {
+    int32 id = 1;
+    string title =2;
+    string pic = 3;
+    repeated string tags = 4;
+    string content =5;
+    google.protobuf.Timestamp post_time = 6;
+
+}
+message ResponseData {
+    int32 code =1;
+    string message = 2;
+}
+
+message ListPostReuquest {
+    int32 page = 1;
+    int32 page_size =2;
+    string title = 3;
+}
+
+message ListPostResponse {
+    int32 code = 1;
+    string message = 2;
+    message ListPostData {
+        int32 page =1;
+        int32 page_size =2;
+        int32 total = 3;
+        repeated PostItem rows = 4;
+    }
+    ListPostData data = 3;
+    
+}
+
+message GetPostOne {
+    int32 id = 1;
+}
+message Null {};
+service Post {
+    rpc ListPost(ListPostReuquest) returns(ListPostResponse){
+        option (google.api.http) = {
+			get: "/posts"
+		}; 
+    };
+    rpc PostDetail(GetPostOne) returns (PostItem) {
+        option (google.api.http) = {
+            get: "/posts/{id}"
+        };
+    };
+
+    rpc AddPost(PostItem) returns (ResponseData) {
+        option (google.api.http) = {
+            post: "/posts"
+        };
+    };
+    rpc UpdatePost(PostItem) returns (ResponseData) {
+        option (google.api.http) = {
+            put: "/posts/{id}"
+        };
+    };
+    rpc DeletePost(GetPostOne) returns (ResponseData) {
+        option (google.api.http) = {
+            delete: "/posts/{id}"
+        };
+    };
+}

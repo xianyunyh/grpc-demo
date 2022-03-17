@@ -2,57 +2,63 @@ package main
 
 import (
 	"context"
+	"gRPC-study/handler"
 	pb "gRPC-study/models"
 	"log"
 	"net"
 	"net/http"
-	"time"
 
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type serve struct {
-	pb.UnimplementedUserServer
-}
-
-func (s *serve) GetName(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
-	return &pb.UserResponse{Id: req.Id, Name: time.Now().Format("15:04:05")}, nil
-}
+var (
+	grpAddr  = ":8081"
+	httpAddr = ":8080"
+)
 
 func main() {
-
-	server := grpc.NewServer()
-	pb.RegisterUserServer(server, &serve{})
-	grpAddr := ":8080"
-	l, err := net.Listen("tcp", grpAddr)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
 	go func() {
-		err = server.Serve(l)
+		creategRPCServer(grpAddr)
 	}()
-	createHttpServer(grpAddr)
+	log.Println("start grpc server ", grpAddr)
+	err := createHttpServer(grpAddr, httpAddr)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	log.Println("start gateway http server", httpAddr)
 
 }
 
-func createHttpServer(grpcPoint string) error {
+func creategRPCServer(addr string) error {
+	server := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		grpc_recovery.UnaryServerInterceptor(),
+	))
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	pb.RegisterPostServer(server, handler.NewPostHandler())
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	return server.Serve(l)
+}
+
+func createHttpServer(grpcAddr string, httpAddr string) error {
+
+	ctx, _ := context.WithCancel(context.Background())
+	// defer cancel()
 
 	// Register gRPC server endpoint
 	// Note: Make sure the gRPC server is running properly and accessible
 	mux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	err := pb.RegisterUserHandlerFromEndpoint(ctx, mux, grpcPoint, opts)
+	err := pb.RegisterPostHandlerFromEndpoint(ctx, mux, grpcAddr, opts)
 	if err != nil {
 		return err
 	}
 
 	// Start HTTP server (and proxy calls to gRPC server endpoint)
-	return http.ListenAndServe(":8081", mux)
+	return http.ListenAndServe(httpAddr, mux)
 }
